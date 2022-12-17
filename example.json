@@ -1,0 +1,16 @@
+{
+  "method": 2,
+  "rho": 1000,
+  "J": 1.14,
+  "A": 1,
+  "L": 10,
+  "I_y": 1,
+  "I_z": 1,
+  "E": 2.1e11,
+  "G": 1.05e11,
+  "dt": 0.01,
+  "N": 1001,
+  "f_dat_file_path": "C:\\Users\\a.pesterev\\CLionProjects\\mechanics\\fs.dat",
+  "alpha": 0,
+  "beta": 0
+}
