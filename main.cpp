@@ -78,7 +78,7 @@ void mechanics_newmark(const MATRIX_TYPE &masses, const MATRIX_TYPE &demp, const
     const MATRIX_TYPE inv_Z = (Q_2 + stiffness).inverse();
     const TYPE double_div_sqr_dt = TYPE(2) / (dt * dt);
     for (size_t idx = 0; idx < N; idx++) {
-        const VECTOR_TYPE R_i_next = F(idx + 1) + masses * acceleration + Q_1 * speed + Q_2 * v;
+        const VECTOR_TYPE R_i_next = F(idx) + masses * acceleration + Q_1 * speed + Q_2 * v;
         VECTOR_TYPE V_next = R_i_next * inv_Z;
         if (boundaries != nullptr) {
             boundaries(V_next, speed, acceleration);
