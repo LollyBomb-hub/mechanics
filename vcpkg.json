@@ -1,5 +1,5 @@
 {
-  "name": "solver_mfe",
+  "name": "solver-mfe",
   "version-string": "0.0.2",
   "description": "Solver method of finite elements",
   "dependencies": [
