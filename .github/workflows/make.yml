@@ -11,18 +11,29 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: true
 
     - name: Directory setup
       run: mkdir ubuntu-build
 
-    - name: setup libraries
-      run: vcpkg install eigen3:x64-linux jsoncpp:x64-linux
+    - uses: lukka/get-cmake@latest
 
-    - name: Configuration cmake for release build
-      run: cmake -B ${{github.workspace}}/ubuntu-build -DCMAKE_BUILD_TYPE=Release
+    - name: Restore artifacts, or setup vcpkg for building artifacts
+      uses: lukka/run-vcpkg@v10
+      id: runvcpkg
+      with:
+        runVcpkgInstall: true
 
-    - name: Release build
-      run: cmake --build ${{github.workspace}}/ubuntu-build --config Release
+    - name: Run CMake+vcpkg+Ninja
+      uses: lukka/run-cmake@v10
+      id: runcmake
+      with:
+        cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
+        configurePreset: default
+        buildPreset: default
+        buildPresetAdditionalArgs: ['--config Release']
+        useVcpkgToolchainFile: true
 
     - name: Upload built artifact
       uses: actions/upload-artifact@v3
@@ -36,18 +47,29 @@ jobs:
     
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: true
 
     - name: Directory setup
       run: mkdir windows-build
 
-    - name: setup libraries
-      run: vcpkg install eigen3:x64-linux jsoncpp:x64-linux
+    - uses: lukka/get-cmake@latest
 
-    - name: Configuration cmake for release build
-      run: cmake -B ${{github.workspace}}/windows-build -DCMAKE_BUILD_TYPE=Release
+    - name: Restore artifacts, or setup vcpkg for building artifacts
+      uses: lukka/run-vcpkg@v10
+      id: runvcpkg
+      with:
+        runVcpkgInstall: true
 
-    - name: Release build
-      run: cmake --build ${{github.workspace}}/windows-build --config Release
+    - name: Run CMake+vcpkg+Ninja
+      uses: lukka/run-cmake@v10
+      id: runcmake
+      with:
+        cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
+        configurePreset: default
+        buildPreset: default
+        buildPresetAdditionalArgs: ['--config Release']
+        useVcpkgToolchainFile: true
 
     - name: Upload built artifact
       uses: actions/upload-artifact@v3
