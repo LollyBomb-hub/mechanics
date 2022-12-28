@@ -15,6 +15,9 @@ jobs:
     - name: Directory setup
       run: mkdir ubuntu-build
 
+    - name: setup libraries
+      run: vcpkg install eigen3:x64-linux jsoncpp:x64-linux
+
     - name: Configuration cmake for release build
       run: cmake -B ${{github.workspace}}/ubuntu-build -DCMAKE_BUILD_TYPE=Release
 
@@ -36,6 +39,9 @@ jobs:
 
     - name: Directory setup
       run: mkdir windows-build
+
+    - name: setup libraries
+      run: vcpkg install eigen3:x64-linux jsoncpp:x64-linux
 
     - name: Configuration cmake for release build
       run: cmake -B ${{github.workspace}}/windows-build -DCMAKE_BUILD_TYPE=Release
