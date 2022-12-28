@@ -1,0 +1,9 @@
+{
+  "name": "solver_mfe",
+  "version-string": "0.0.2",
+  "description": "Solver method of finite elements",
+  "dependencies": [
+    "eigen3",
+    "jsoncpp"
+  ]
+}
