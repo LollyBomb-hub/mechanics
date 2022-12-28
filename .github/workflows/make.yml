@@ -32,7 +32,6 @@ jobs:
         cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
         configurePreset: default
         buildPreset: default
-        buildPresetAdditionalArgs: '--config Release'
         useVcpkgToolchainFile: true
 
     - name: Upload built artifact
@@ -68,7 +67,6 @@ jobs:
         cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
         configurePreset: default
         buildPreset: default
-        buildPresetAdditionalArgs: '--config Release'
         useVcpkgToolchainFile: true
 
     - name: Upload built artifact
