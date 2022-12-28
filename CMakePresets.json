@@ -7,26 +7,34 @@
   },
   "configurePresets": [
     {
-      "name": "default",
+      "name": "windows",
       "displayName": "Ninja Configure Settings",
       "description": "Sets build and install directories",
-      "binaryDir": "${sourceDir}/builds/${presetName}",
+      "binaryDir": "${sourceDir}/windows-build",
+      "generator": "Ninja",
+      "toolchainFile": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake"
+    },
+    {
+      "name": "ubuntu",
+      "displayName": "Ninja Configure Settings",
+      "description": "Sets build and install directories",
+      "binaryDir": "${sourceDir}/ubuntu-build",
       "generator": "Ninja",
       "toolchainFile": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake"
     }
   ],
   "buildPresets": [
     {
-      "name": "default",
+      "name": "windows-build",
+      "configurePreset": "windows",
+      "displayName": "Build",
+      "description": "Build"
+    },
+    {
+      "name": "ubuntu-build",
       "configurePreset": "default",
       "displayName": "Build",
       "description": "Build"
-    }
-  ],
-  "testPresets": [
-    {
-      "name": "default",
-      "configurePreset": "default"
     }
   ]
 }

@@ -59,7 +59,6 @@ TYPE get_dt(const MATRIX_TYPE &masses, const MATRIX_TYPE &stiffness) {
 void mechanics_mcd(const MATRIX_TYPE &masses, const MATRIX_TYPE &demp, const MATRIX_TYPE &stiffness, TYPE dt,
                    VECTOR_TYPE &V_0, VECTOR_TYPE &V_1, const std::function<const VECTOR_TYPE(const size_t)> &F,
                    const size_t N,
-                   const std::function<void(VECTOR_TYPE &)> &boundaries = nullptr,
                    const std::function<void(const VECTOR_TYPE &, const size_t)> &callback = nullptr) {
     const TYPE sqr_dt = dt * dt;
     const TYPE double_dt = TYPE(2) * dt;
@@ -72,9 +71,6 @@ void mechanics_mcd(const MATRIX_TYPE &masses, const MATRIX_TYPE &demp, const MAT
     for (size_t idx = 0; idx < N; idx++) {
     	Eigen::SimplicialLDLT<Eigen::SparseMatrix<TYPE>> solver(sparse_matrix);
 		VECTOR_TYPE V_next = solver.solve(F(idx) + Q_2 * V_1 - Q_3 * V_0);
-        if (boundaries != nullptr) {
-            boundaries(V_next);
-        }
         if (callback != nullptr) {
             callback(V_next, idx);
         }
@@ -87,11 +83,10 @@ void mechanics_mcd(const MATRIX_TYPE &masses, const MATRIX_TYPE &demp, const MAT
 void mechanics_mcd(const MATRIX_TYPE &masses, const MATRIX_TYPE &demp, const MATRIX_TYPE &stiffness,
                    VECTOR_TYPE &V_0, VECTOR_TYPE &V_1, const std::function<const VECTOR_TYPE(const size_t)> &F,
                    const size_t N,
-                   const std::function<void(VECTOR_TYPE &)> &boundaries = nullptr,
                    const std::function<void(const VECTOR_TYPE &, const size_t)> &callback = nullptr) {
     mechanics_mcd(masses, demp, stiffness,
                   get_dt(masses, stiffness),
-                  V_0, V_1, F, N, boundaries, callback);
+                  V_0, V_1, F, N, callback);
 }
 
 void mechanics_newmark(
@@ -522,11 +517,13 @@ int main(int argc, char **argv) {
         }
         
         auto dt = root.get("dt", (double) (-1)).as<double>();
-        const auto N = root.get("N", -1).as<long long>();
+        const auto N = root.get("N", -1).asInt64();
         if (N < 0) {
             std::cout << "Check given params, some of them are less than 0!\n";
             exit(4);
         }
+        
+        
         const auto f_data_file_path_string = std::string(root.get("f_dat_file_path", "").as<std::string>());
         const auto f_data_file_path = std::filesystem::path(f_data_file_path_string);
         
@@ -607,14 +604,13 @@ int main(int argc, char **argv) {
                 output << v;
                 output << '\n';
             };
-            const auto boundaries = nullptr;
             if (dt > 0) {
                 mechanics_mcd(
                         *masses_matrix_res, *demp_matrix_res, *stiffness_matrix_res,
                         dt, v_0, v_1,
                         [fs](const size_t i) {
                             return fs.row(i);
-                        }, N, boundaries, mechanics_callback
+                        }, N, mechanics_callback
                 );
             } else {
                 mechanics_mcd(
@@ -622,7 +618,7 @@ int main(int argc, char **argv) {
                         v_0, v_1,
                         [fs](const size_t i) {
                             return fs.row(i);
-                        }, N, boundaries, mechanics_callback
+                        }, N, mechanics_callback
                 );
             }
         }
