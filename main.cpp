@@ -1,15 +1,18 @@
 #include <iostream>
 #include <Eigen/Dense>
+#include <Eigen/Sparse>
 #include <numbers>
 #include <filesystem>
 #include <fstream>
 #include <json/json.h>
 #include <chrono>
 
+#define IS_FLOAT
+
 #ifdef IS_FLOAT
 #define MATRIX_TYPE Eigen::MatrixXf
 #define VECTOR_TYPE Eigen::VectorXf
-#define TYPE float
+typedef float TYPE;
 #else
 #define MATRIX_TYPE Eigen::MatrixXd
 #define VECTOR_TYPE Eigen::VectorXd
@@ -19,6 +22,29 @@ typedef long double TYPE;
 
 #define MCD 1
 #define NEWMARK 2
+
+
+void removeRow(MATRIX_TYPE& matrix, unsigned int rowToRemove)
+{
+    unsigned int numRows = matrix.rows()-1;
+    unsigned int numCols = matrix.cols();
+
+    if( rowToRemove < numRows )
+        matrix.block(rowToRemove,0,numRows-rowToRemove,numCols) = matrix.bottomRows(numRows-rowToRemove);
+
+    matrix.conservativeResize(numRows,numCols);
+}
+
+void removeColumn(MATRIX_TYPE& matrix, unsigned int colToRemove)
+{
+    unsigned int numRows = matrix.rows();
+    unsigned int numCols = matrix.cols()-1;
+
+    if( colToRemove < numCols )
+        matrix.block(0,colToRemove,numRows,numCols-colToRemove) = matrix.rightCols(numCols-colToRemove);
+
+    matrix.conservativeResize(numRows,numCols);
+}
 
 
 // https://vk.com/doc131581930_645459975?hash=grFJfOlaOMeM59eYHGvsUlgjeqmQXIOW7vmJMt7K6ao&dl=gQSajjmLbAK969UEMJv8hx9zAV1QPXXu7KgxsEnH0dg
@@ -39,11 +65,13 @@ void mechanics_mcd(const MATRIX_TYPE &masses, const MATRIX_TYPE &demp, const MAT
     const TYPE double_dt = TYPE(2) * dt;
     const MATRIX_TYPE M_div_sqr_dt = masses / sqr_dt;
     const MATRIX_TYPE D_div_double_dt = demp / double_dt;
-    const MATRIX_TYPE Q_1 = (M_div_sqr_dt + D_div_double_dt).inverse();
-    const MATRIX_TYPE Q_2 = Q_1 * (2 * M_div_sqr_dt - stiffness);
-    const MATRIX_TYPE Q_3 = Q_1 * (M_div_sqr_dt - D_div_double_dt);
+    const MATRIX_TYPE Q_1 = (M_div_sqr_dt + D_div_double_dt);
+    const MATRIX_TYPE Q_2 = (2 * M_div_sqr_dt - stiffness);
+    const MATRIX_TYPE Q_3 = (M_div_sqr_dt - D_div_double_dt);
+    const Eigen::SparseMatrix<TYPE> sparse_matrix = Q_1.sparseView();
     for (size_t idx = 0; idx < N; idx++) {
-        VECTOR_TYPE V_next = Q_1 * F(idx) + Q_2 * V_1 - Q_3 * V_0;
+    	Eigen::SimplicialLDLT<Eigen::SparseMatrix<TYPE>> solver(sparse_matrix);
+		VECTOR_TYPE V_next = solver.solve(F(idx) + Q_2 * V_1 - Q_3 * V_0);
         if (boundaries != nullptr) {
             boundaries(V_next);
         }
@@ -66,46 +94,94 @@ void mechanics_mcd(const MATRIX_TYPE &masses, const MATRIX_TYPE &demp, const MAT
                   V_0, V_1, F, N, boundaries, callback);
 }
 
-// https://vk.com/doc131581930_645459975?hash=grFJfOlaOMeM59eYHGvsUlgjeqmQXIOW7vmJMt7K6ao&dl=gQSajjmLbAK969UEMJv8hx9zAV1QPXXu7KgxsEnH0dg
-void mechanics_newmark(const MATRIX_TYPE &masses, const MATRIX_TYPE &demp, const MATRIX_TYPE &stiffness,
-                       VECTOR_TYPE &acceleration, VECTOR_TYPE &speed, VECTOR_TYPE &v, TYPE dt,
-                       const std::function<const VECTOR_TYPE(const size_t)> &F, const size_t N,
-                       const std::function<void(VECTOR_TYPE &, VECTOR_TYPE &, VECTOR_TYPE &)> &boundaries = nullptr,
-                       const std::function<void(const VECTOR_TYPE &, const VECTOR_TYPE &, const VECTOR_TYPE &,
-                                                const size_t)> &callback = nullptr) {
-    const MATRIX_TYPE Q_1 = TYPE(2) * masses / dt;
-    const MATRIX_TYPE Q_2 = (Q_1 + demp) / dt;
-    const MATRIX_TYPE inv_Z = (Q_2 + stiffness).inverse();
-    const TYPE double_div_sqr_dt = TYPE(2) / (dt * dt);
-    for (size_t idx = 0; idx < N; idx++) {
-        const VECTOR_TYPE R_i_next = F(idx) + masses * acceleration + Q_1 * speed + Q_2 * v;
-        VECTOR_TYPE V_next = R_i_next * inv_Z;
-        if (boundaries != nullptr) {
-            boundaries(V_next, speed, acceleration);
-        }
-        const VECTOR_TYPE acceleration_next = double_div_sqr_dt * (V_next - v - speed * dt) - acceleration;
-        speed = speed + ((acceleration + acceleration_next) * dt) / TYPE(2);
-        acceleration = acceleration_next;
-        v = V_next;
-        if (callback != nullptr) {
-            callback(v, acceleration, speed, idx + 1);
-        }
-    }
+void mechanics_newmark(
+			const MATRIX_TYPE& masses, const MATRIX_TYPE& demp, const MATRIX_TYPE& stiffness,
+			const TYPE& dt, const TYPE& alpha, const TYPE& delta, const size_t N,
+			VECTOR_TYPE& acceleration, VECTOR_TYPE& speed, VECTOR_TYPE& displacement,
+			const std::function<const VECTOR_TYPE(const size_t)> &F,
+			const std::function<void(const VECTOR_TYPE &, const VECTOR_TYPE &, const VECTOR_TYPE &, const size_t)> &callback = nullptr
+) {
+	const auto a0 = 1 / (alpha * dt * dt);
+	const auto a1 = delta / (alpha * dt);
+	const auto a2 = 1 / (alpha * dt);
+	const auto a3 = 1 / (2 * alpha) - 1;
+	const auto a4 = delta / alpha - 1;
+	const auto a5 = (dt / 2) * (delta / alpha - 2);
+	const auto matrix = a0 * masses + a1 * demp + stiffness;
+	const Eigen::SparseMatrix<TYPE> sparse_matrix = matrix.sparseView();
+	const auto callback_specified = (callback != nullptr);
+	std::cout << "Starting Newmark method with parameters:\n"
+				<< "\tdt	= " << dt << '\n'
+				<< "\talpha	= " << alpha << '\n'
+				<< "\tdelta	= " << delta << '\n'
+				<< "\tN 	= " << N << '\n'
+				<< "\ta0	= " << a0 << '\n'
+				<< "\ta1	= " << a1 << '\n'
+				<< "\ta2	= " << a2 << '\n'
+				<< "\ta3	= " << a3 << '\n'
+				<< "\ta4	= " << a4 << '\n'
+				<< "\ta5	= " << a5 << '\n';
+	size_t i;
+	for (i = 0; i < N; i++) {
+		const auto F_n_next = F(i);
+		const auto masses_multiplied_argument = masses * (a0 * displacement + a2 * speed + a3 * acceleration);
+		const auto demp_multiplied_argument = demp * (a1 * displacement + a4 * speed + a5 * acceleration);
+		const auto right_part = F_n_next + masses_multiplied_argument + demp_multiplied_argument;
+		Eigen::SimplicialLDLT<Eigen::SparseMatrix<TYPE>> solver(sparse_matrix);
+		const auto displacement_next = solver.solve(right_part);
+		const auto speed_next = a1 * (displacement_next - displacement) - a4 * (speed) - a5 * acceleration;
+		const auto acceleration_next = a0 * (displacement_next - displacement) - a2 * speed - a3 * acceleration;
+		if (callback_specified) {
+			callback(displacement_next, speed_next, acceleration_next, i);
+		}
+		acceleration = acceleration_next;
+		speed = speed_next;
+		displacement = displacement_next;
+	}
 }
 
-void mechanics_newmark(const MATRIX_TYPE &masses, const MATRIX_TYPE &demp, const MATRIX_TYPE &stiffness,
-                       VECTOR_TYPE &acceleration, VECTOR_TYPE &speed, VECTOR_TYPE &v,
-                       const std::function<const VECTOR_TYPE(const size_t)> &F, const size_t N,
-                       const std::function<void(VECTOR_TYPE &, VECTOR_TYPE &, VECTOR_TYPE &)> &boundaries = nullptr,
-                       const std::function<void(const VECTOR_TYPE &, const VECTOR_TYPE &, const VECTOR_TYPE &,
-                                                const size_t)> &callback = nullptr) {
-    mechanics_newmark(
-            masses, demp, stiffness,
-            acceleration, speed, v, get_dt(masses, stiffness),
-            F, N,
-            boundaries,
-            callback
-    );
+
+void ensemble(MATRIX_TYPE& appendable_matrix, MATRIX_TYPE& appended_matrix, const size_t start_from_row, const size_t start_from_col) {
+	size_t i, j;
+	const auto appendable_matrix_rows = appendable_matrix.rows();
+	const auto appendable_matrix_cols = appendable_matrix.cols();
+	const auto appended_matrix_rows = appended_matrix.rows();
+	const auto appended_matrix_cols = appended_matrix.cols();
+	
+	const auto merged_region_row_count = appendable_matrix_rows - start_from_row;
+	const auto merged_region_col_count = appendable_matrix_cols - start_from_col;
+	appendable_matrix.block(start_from_row, start_from_col, merged_region_row_count, merged_region_col_count) += 
+				appended_matrix.block(0, 0, merged_region_row_count, merged_region_col_count);
+	const auto rest_rows_count = appended_matrix_rows - merged_region_row_count;
+	const auto rest_cols_count = appended_matrix_cols - merged_region_col_count;
+	const auto rows_before_appended_region = appendable_matrix_rows - merged_region_row_count;
+	const auto cols_before_appended_region = appendable_matrix_cols - merged_region_col_count;
+	const auto new_rows_count = appendable_matrix_rows + rest_rows_count;
+	const auto new_cols_count = appendable_matrix_cols + rest_cols_count;
+	appendable_matrix.conservativeResize(new_rows_count, new_cols_count);
+	VECTOR_TYPE zeros(new_cols_count);
+	for (i = 0; i < rest_rows_count; i++) {
+		for (j = 0; j < new_cols_count; j++) {
+			if (j >= cols_before_appended_region) {
+				zeros(j) = appended_matrix(i + merged_region_row_count, j - cols_before_appended_region);
+			} else {
+				zeros(j) = 0;
+			}
+		}
+		appendable_matrix.row(i + appendable_matrix_rows) = zeros;
+	}
+	zeros = VECTOR_TYPE(appendable_matrix_rows);
+	for (i = appendable_matrix_cols; i < new_cols_count; i++) {
+		const auto appended_col_index = i - appendable_matrix_cols + merged_region_col_count;
+		for (j = 0; j < appendable_matrix_rows; j++) {
+			if (j >= start_from_row) {
+				zeros(j) = appended_matrix(j - start_from_row, appended_col_index);
+			} else {
+				zeros(j) = 0;
+			}
+		}
+		appendable_matrix.block(0, i, appendable_matrix_rows, 1) = zeros;
+	}
 }
 
 
@@ -339,6 +415,94 @@ MATRIX_TYPE stiffness_matrix(const TYPE E, const TYPE A, const TYPE L, const TYP
 }
 
 
+void process_super_element(
+		const Json::Value& super_element,
+		MATRIX_TYPE*& masses_full,
+		MATRIX_TYPE*& demp_full,
+		MATRIX_TYPE*& stiffness_full,
+		size_t index
+) {
+	const auto rho = super_element.get("rho", (double) (-1)).as<double>();
+    if (rho < 0) {
+        std::cout << "Check given params, some of them are less than 0!\n";
+        exit(4);
+    }
+    const auto J = super_element.get("J", (double) (-1)).as<double>();
+    if (J < 0) {
+        std::cout << "Check given params, some of them are less than 0!\n";
+        exit(4);
+    }
+    const auto A = super_element.get("A", (double) (-1)).as<double>();
+    if (A < 0) {
+        std::cout << "Check given params, some of them are less than 0!\n";
+        exit(4);
+    }
+    const auto L = super_element.get("L", (double) (-1)).as<double>();
+    if (L < 0) {
+        std::cout << "Check given params, some of them are less than 0!\n";
+        exit(4);
+    }
+    const auto I_y = super_element.get("I_y", (double) (-1)).as<double>();
+    if (I_y < 0) {
+        std::cout << "Check given params, some of them are less than 0!\n";
+        exit(4);
+    }
+    const auto I_z = super_element.get("I_z", (double) (-1)).as<double>();
+    if (I_z < 0) {
+        std::cout << "Check given params, some of them are less than 0!\n";
+        exit(4);
+    }
+    const auto E = super_element.get("E", (double) (-1)).as<double>();
+    if (E < 0) {
+        std::cout << "Check given params, some of them are less than 0!\n";
+        exit(4);
+    }
+    const auto G = super_element.get("G", (double) (-1)).as<double>();
+    if (G < 0) {
+        std::cout << "Check given params, some of them are less than 0!\n";
+        exit(4);
+    }
+    const auto alpha = super_element.get("alpha", (double) (-1)).as<double>();
+    if (alpha < 0) {
+        std::cout << "Check given params, some of them are less than 0!\n";
+        exit(4);
+    }
+    const auto beta = super_element.get("beta", (double) (-1)).as<double>();
+    if (beta < 0) {
+        std::cout << "Check given params, some of them are less than 0!\n";
+        exit(4);
+    }
+    auto masses_matrix_res = masses_matrix(A, J, L, rho);
+    auto stiffness_matrix_res = stiffness_matrix(E, A, L, I_z, I_y, G, J);
+    MATRIX_TYPE demp_matrix_res = alpha * masses_matrix_res + beta * stiffness_matrix_res;
+    if (masses_full == nullptr) {
+    	masses_full = new MATRIX_TYPE(masses_matrix_res);
+    	demp_full = new MATRIX_TYPE(demp_matrix_res);
+    	stiffness_full = new MATRIX_TYPE(stiffness_matrix_res);
+	} else {
+		const auto from = (index) * 6;
+		ensemble(
+			*masses_full,
+			masses_matrix_res,
+			from,
+			from
+		);
+		ensemble(
+			*demp_full,
+			demp_matrix_res,
+			from,
+			from
+		);
+		ensemble(
+			*stiffness_full,
+			stiffness_matrix_res,
+			from,
+			from
+		);
+	}
+}
+
+
 int main(int argc, char **argv) {
     if (argc != 2) {
         std::cout << "Invalid usage. run 'mechanics <<json-config-path>>'\n";
@@ -356,57 +520,8 @@ int main(int argc, char **argv) {
         if (method_type == -1) {
             exit(4);
         }
-        const auto rho = root.get("rho", (double) (-1)).as<double>();
-        if (rho < 0) {
-            std::cout << "Check given params, some of them are less than 0!\n";
-            exit(4);
-        }
-        const auto J = root.get("J", (double) (-1)).as<double>();
-        if (J < 0) {
-            std::cout << "Check given params, some of them are less than 0!\n";
-            exit(4);
-        }
-        const auto A = root.get("A", (double) (-1)).as<double>();
-        if (A < 0) {
-            std::cout << "Check given params, some of them are less than 0!\n";
-            exit(4);
-        }
-        const auto L = root.get("L", (double) (-1)).as<double>();
-        if (L < 0) {
-            std::cout << "Check given params, some of them are less than 0!\n";
-            exit(4);
-        }
-        const auto I_y = root.get("I_y", (double) (-1)).as<double>();
-        if (I_y < 0) {
-            std::cout << "Check given params, some of them are less than 0!\n";
-            exit(4);
-        }
-        const auto I_z = root.get("I_z", (double) (-1)).as<double>();
-        if (I_z < 0) {
-            std::cout << "Check given params, some of them are less than 0!\n";
-            exit(4);
-        }
-        const auto E = root.get("E", (double) (-1)).as<double>();
-        if (E < 0) {
-            std::cout << "Check given params, some of them are less than 0!\n";
-            exit(4);
-        }
-        const auto G = root.get("G", (double) (-1)).as<double>();
-        if (G < 0) {
-            std::cout << "Check given params, some of them are less than 0!\n";
-            exit(4);
-        }
-        const auto alpha = root.get("alpha", (double) (-1)).as<double>();
-        if (alpha < 0) {
-            std::cout << "Check given params, some of them are less than 0!\n";
-            exit(4);
-        }
-        const auto beta = root.get("beta", (double) (-1)).as<double>();
-        if (beta < 0) {
-            std::cout << "Check given params, some of them are less than 0!\n";
-            exit(4);
-        }
-        const auto dt = root.get("dt", (double) (-1)).as<double>();
+        
+        auto dt = root.get("dt", (double) (-1)).as<double>();
         const auto N = root.get("N", -1).as<long long>();
         if (N < 0) {
             std::cout << "Check given params, some of them are less than 0!\n";
@@ -414,12 +529,52 @@ int main(int argc, char **argv) {
         }
         const auto f_data_file_path_string = std::string(root.get("f_dat_file_path", "").as<std::string>());
         const auto f_data_file_path = std::filesystem::path(f_data_file_path_string);
-        MATRIX_TYPE fs(N, 12);
+        
+        auto super_elements = root["elements"];
+        
+        if (super_elements == NULL) {
+        	std::cout << "Super elements not specified!\n";
+        	exit(4);
+		}
+		
+		MATRIX_TYPE* masses_matrix_res = nullptr;
+		MATRIX_TYPE* stiffness_matrix_res = nullptr;
+		MATRIX_TYPE* demp_matrix_res = nullptr;
+		
+		if (super_elements.isArray()) {
+			int i;
+			for (i = 0; i < super_elements.size(); i++) {
+				process_super_element(super_elements[i], masses_matrix_res, demp_matrix_res, stiffness_matrix_res, i);
+			}
+		} else if (super_elements.isObject()) {
+			process_super_element(super_elements, masses_matrix_res, demp_matrix_res, stiffness_matrix_res, 0);
+		} else {
+			std::cout << "Super element('s) must be object or array.\n";
+			exit(3);
+		}
+		
+		if (masses_matrix_res == nullptr) {
+			std::cout << "Masses was null!\n";
+			exit(3);
+		}
+        
+        for (int i = 0; i < 6; i++) {
+        	removeRow(*masses_matrix_res, 0);
+        	removeColumn(*masses_matrix_res, 0);
+        	removeRow(*stiffness_matrix_res, 0);
+        	removeColumn(*stiffness_matrix_res, 0);
+        	removeRow(*demp_matrix_res, 0);
+        	removeColumn(*demp_matrix_res, 0);
+		}
+		
+		const size_t initial_conditions_vectors_size = masses_matrix_res->rows();
+        
+        MATRIX_TYPE fs(N, initial_conditions_vectors_size);
         if (std::filesystem::exists(f_data_file_path) && std::filesystem::is_regular_file(f_data_file_path)) {
             std::ifstream fs_data(f_data_file_path_string);
             if (fs_data.is_open()) {
                 for (size_t i = 0; i < N; i++) {
-                    for (unsigned short j = 0; j < 12; j++) {
+                    for (unsigned short j = 0; j < initial_conditions_vectors_size; j++) {
                         TYPE val;
                         fs_data >> val;
                         fs.coeffRef(i, j) = val;
@@ -431,40 +586,31 @@ int main(int argc, char **argv) {
             std::cout << "f_dat_file_path is wrong!\n";
             exit(3);
         }
-        if (config.is_open()) { config.close(); }
-        const auto masses_matrix_res = masses_matrix(A, J, L, rho);
-        const auto stiffness_matrix_res = stiffness_matrix(E, A, L, I_z, I_y, G, J);
-        const auto demp_matrix_res = alpha * masses_matrix_res + beta * stiffness_matrix_res;
-//        std::cout << masses_matrix_res << '\n' << stiffness_matrix_res << demp_matrix_res << '\n';
+
         if (!(std::filesystem::exists("./output") && std::filesystem::is_directory("./output"))) {
             std::filesystem::create_directories("./output");
         }
+        
+        std::ofstream output("./output/result.txt");
+        
+        output << "[M] = \n" << *masses_matrix_res << '\n' << "[C] = \n" << *demp_matrix_res << '\n' << "[K] = \n" << *stiffness_matrix_res << '\n';
+        
         if (method_type == MCD) {
-            VECTOR_TYPE v_0(12);
-            VECTOR_TYPE v_1(12);
-            for (unsigned short i = 0; i < 12; i++) {
+            VECTOR_TYPE v_0(initial_conditions_vectors_size);
+            VECTOR_TYPE v_1(initial_conditions_vectors_size);
+            for (unsigned short i = 0; i < initial_conditions_vectors_size; i++) {
                 v_0.coeffRef(i) = 0;
                 v_1.coeffRef(i) = 0;
             }
-            std::ofstream output("./output/result.txt");
             const auto mechanics_callback = [&output](const VECTOR_TYPE &v, const size_t idx) {
-                const auto s = v.size();
-                output << idx << ' ';
-                for (size_t k = 0; k < s; k++) {
-                    if (k + 1 < s) { output << v.coeff(k) << ' '; }
-                    else { output << v.coeff(k); };
-                }
+                output << idx << '\n';
+                output << v;
                 output << '\n';
             };
-            const auto boundaries = [](VECTOR_TYPE &v) {
-                const auto s = v.size();
-                for (size_t k = 0; k < 6; k++) {
-                    v.coeffRef(k) = 0;
-                }
-            };
+            const auto boundaries = nullptr;
             if (dt > 0) {
                 mechanics_mcd(
-                        masses_matrix_res, demp_matrix_res, stiffness_matrix_res,
+                        *masses_matrix_res, *demp_matrix_res, *stiffness_matrix_res,
                         dt, v_0, v_1,
                         [fs](const size_t i) {
                             return fs.row(i);
@@ -472,77 +618,66 @@ int main(int argc, char **argv) {
                 );
             } else {
                 mechanics_mcd(
-                        masses_matrix_res, demp_matrix_res, stiffness_matrix_res,
+                        *masses_matrix_res, *demp_matrix_res, *stiffness_matrix_res,
                         v_0, v_1,
                         [fs](const size_t i) {
                             return fs.row(i);
                         }, N, boundaries, mechanics_callback
                 );
             }
-            if (output.is_open()) { output.close(); }
         }
         if (method_type == NEWMARK) {
-            VECTOR_TYPE v(12);
-            VECTOR_TYPE speed(12);
-            VECTOR_TYPE acceleration(12);
-            for (unsigned short i = 0; i < 12; i++) {
+        	const auto integration_alpha = root.get("newmark_alpha", (double)(-1)).as<double>();
+        	const auto integration_delta = root.get("newmark_delta", (double)(-1)).as<double>();
+            VECTOR_TYPE v(initial_conditions_vectors_size);
+            VECTOR_TYPE speed(initial_conditions_vectors_size);
+            VECTOR_TYPE acceleration(initial_conditions_vectors_size);
+            for (unsigned short i = 0; i < initial_conditions_vectors_size; i++) {
                 v.coeffRef(i) = 0;
                 speed.coeffRef(i) = 0;
                 acceleration.coeffRef(i) = 0;
             }
-            std::ofstream output("./output/result.txt");
-            const auto mechanics_callback = [&output](const VECTOR_TYPE &v, const VECTOR_TYPE &acceleration,
-                                                      const VECTOR_TYPE &speed, const size_t idx) {
-                const auto s = v.size();
+            const auto mechanics_callback = [&output](const VECTOR_TYPE &v, const VECTOR_TYPE &speed, const VECTOR_TYPE &acceleration, const size_t idx) {
                 output << idx << '\n';
-                for (size_t k = 0; k < s; k++) {
-                    const auto v_c = v.coeff(k);
-                    if (k + 1 < s) { output << v_c << ' '; }
-                    else { output << v_c; };
-                }
-                output << '\n';
-                for (size_t k = 0; k < s; k++) {
-                    const auto s_c = speed.coeff(k);
-                    if (k + 1 < s) { output << s_c << ' '; }
-                    else { output << s_c; };
-                }
-                output << '\n';
-                for (size_t k = 0; k < s; k++) {
-                    const auto a_c = acceleration.coeff(k);
-                    if (k + 1 < s) { output << a_c << ' '; }
-                    else { output << a_c; };
-                }
-                output << '\n';
+                output << "displacement\n" << v << '\n';
+                output << "speed\n" << speed << '\n';
+                output << "acceleration\n" << acceleration << '\n';
             };
-            const auto boundaries = [](VECTOR_TYPE &v, VECTOR_TYPE &speed, VECTOR_TYPE &acceleration) {
-                const auto s = v.size();
-                for (size_t k = 0; k < 6; k++) {
-                    v.coeffRef(k) = 0;
-                    speed.coeffRef(k) = 0;
-                    acceleration.coeffRef(k) = 0;
-                }
-            };
+            const auto boundaries = nullptr;
             if (dt > 0) {
                 mechanics_newmark(
-                        masses_matrix_res, demp_matrix_res, stiffness_matrix_res,
-                        acceleration, speed, v, dt,
-                        [fs](const size_t i) {
-                            return fs.row(i);
-                        }, N, boundaries, mechanics_callback
-                );
-            } else {
-                mechanics_newmark(
-                        masses_matrix_res, demp_matrix_res, stiffness_matrix_res,
+                        *masses_matrix_res, *demp_matrix_res, *stiffness_matrix_res,
+                        dt, integration_alpha, integration_delta, N,
                         acceleration, speed, v,
                         [fs](const size_t i) {
                             return fs.row(i);
-                        }, N, boundaries, mechanics_callback
+                        },
+                        mechanics_callback
+                );
+            } else {
+            	const auto max_time = root.get("max_time", double(-1)).as<double>();
+            	if (max_time < 0) {
+            		std::cout << "Check given params, some of them are less than 0!\n";
+            		exit(4);
+				}
+				dt = max_time / N;
+                mechanics_newmark(
+                        *masses_matrix_res, *demp_matrix_res, *stiffness_matrix_res,
+                        dt, integration_alpha, integration_delta, N,
+                        acceleration, speed, v,
+                        [fs](const size_t i) {
+                            return fs.row(i);
+                        },
+                        mechanics_callback
                 );
             }
-            if (output.is_open()) {
-                output.close();
-            }
         }
+        if (output.is_open()) {
+            output.close();
+        }
+        if (config.is_open()) {
+        	config.close();
+		}
     } else {
         std::cout << "Configuration file doesn't exist!\n";
         exit(3);

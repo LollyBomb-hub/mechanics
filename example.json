@@ -1,16 +1,34 @@
 {
   "method": 2,
-  "rho": 1000,
-  "J": 1.14,
-  "A": 1,
-  "L": 10,
-  "I_y": 1,
-  "I_z": 1,
-  "E": 2.1e11,
-  "G": 1.05e11,
   "dt": 0.01,
-  "N": 1001,
-  "f_dat_file_path": "C:\\Users\\a.pesterev\\CLionProjects\\mechanics\\fs.dat",
-  "alpha": 0,
-  "beta": 0
+  "N": 1,
+  "newmark_alpha": 0.3025,
+  "newmark_delta": 0.6,
+  "f_dat_file_path": "C:\\Users\\Sergio\\Desktop\\mechanics-master\\fs.dat",
+  "elements": [
+    {
+      "alpha": 0,
+      "beta": 0,
+      "rho": 0,
+      "J": 1,
+      "A": 1,
+      "L": 5,
+      "I_y": 0.1,
+      "I_z": 0.1,
+      "E": 1.75e7,
+      "G": 1.05e11
+    },
+    {
+      "alpha": 0,
+      "beta": 0,
+      "rho": 0,
+      "J": 1,
+      "A": 1,
+      "L": 5,
+      "I_y": 0.1,
+      "I_z": 0.1,
+      "E": 1.75e7,
+      "G": 1.05e11
+    }
+  ]
 }
