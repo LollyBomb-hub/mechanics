@@ -10,6 +10,7 @@
       "name": "windows",
       "displayName": "Ninja Configure Settings",
       "description": "Sets build and install directories",
+      "generator": "Ninja",
       "binaryDir": "${sourceDir}/windows-build",
       "toolchainFile": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake"
     },
@@ -17,6 +18,7 @@
       "name": "ubuntu",
       "displayName": "Ninja Configure Settings",
       "description": "Sets build and install directories",
+      "generator": "Ninja",
       "binaryDir": "${sourceDir}/ubuntu-build",
       "toolchainFile": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake"
     }
