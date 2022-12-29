@@ -9,6 +9,7 @@ jobs:
 
     runs-on: ubuntu-latest
     env:
+      CMAKE_BUILD_TYPE: 'Release'
       CONFIGURE_PRESET_NAME: 'ubuntu'
       BUILD_PRESET_NAME: 'ubuntu-build'
 
@@ -44,6 +45,7 @@ jobs:
   
     runs-on: windows-latest
     env:
+      CMAKE_BUILD_TYPE: 'Release'
       CONFIGURE_PRESET_NAME: 'windows'
       BUILD_PRESET_NAME: 'windows-build'
     
@@ -51,9 +53,6 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: true
-
-      - name: Directory setup
-        run: mkdir windows-build
 
       - uses: lukka/get-cmake@latest
 

@@ -7,4 +7,8 @@ find_package(jsoncpp CONFIG REQUIRED)
 
 add_executable(mechanics main.cpp)
 target_link_libraries(mechanics PRIVATE Eigen3::Eigen )
+IF (WIN32)
+target_link_libraries(main PRIVATE jsoncpp_lib jsoncpp_object JsonCpp::JsonCpp)
+ELSE()
 target_link_libraries(mechanics PRIVATE jsoncpp_object jsoncpp_static JsonCpp::JsonCpp)
+ENDIF()
