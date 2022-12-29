@@ -13,29 +13,29 @@ jobs:
       BUILD_PRESET_NAME: 'ubuntu-build'
 
     steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: true
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
 
-    - uses: lukka/get-cmake@latest
+      - uses: lukka/get-cmake@latest
 
-    - name: Restore artifacts, or setup vcpkg for building artifacts
-      uses: lukka/run-vcpkg@v10
-      id: runvcpkg
-      with:
-        runVcpkgInstall: true
+      - name: Restore artifacts, or setup vcpkg for building artifacts
+        uses: lukka/run-vcpkg@v10
+        id: runvcpkg
+        with:
+          runVcpkgInstall: true
 
-    - name: Run CMake+vcpkg+Ninja
-      uses: lukka/run-cmake@v10
-      id: runcmake
-      with:
-        cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
+      - name: Run CMake+vcpkg+Ninja
+        uses: lukka/run-cmake@v10
+        id: runcmake
+        with:
+          cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
 
-    - name: Directory check
-      run: ls -al
+      - name: Directory check
+        run: ls -al && ls -al vcpkg
 
-    - name: Upload built artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: ubuntu_built_solver
-        path: build/*
+      - name: Upload built artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ubuntu_built_solver
+          path: build/*
