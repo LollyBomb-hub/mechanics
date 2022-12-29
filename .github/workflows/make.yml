@@ -8,6 +8,9 @@ jobs:
   build-ubuntu:
 
     runs-on: ubuntu-latest
+    env:
+      CONFIGURE_PRESET_NAME: 'ubuntu'
+      BUILD_PRESET_NAME: 'ubuntu-build'
 
     steps:
     - uses: actions/checkout@v3
@@ -30,8 +33,6 @@ jobs:
       id: runcmake
       with:
         cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
-        configurePreset: 'ubuntu'
-        buildPreset: 'ubuntu-build'
 
     - name: Upload built artifact
       uses: actions/upload-artifact@v3
@@ -42,6 +43,9 @@ jobs:
   build-windows:
   
     runs-on: windows-latest
+    env:
+      CONFIGURE_PRESET_NAME: 'windows'
+      BUILD_PRESET_NAME: 'windows-build'
     
     steps:
     - uses: actions/checkout@v3
@@ -64,8 +68,6 @@ jobs:
       id: runcmake
       with:
         cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
-        configurePreset: 'windows'
-        buildPreset: 'windows-build'
 
     - name: Upload built artifact
       uses: actions/upload-artifact@v3
