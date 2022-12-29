@@ -39,7 +39,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ubuntu_built_solver
-          path: ubuntu-build/*
+          path: ubuntu-build/mechanics
 
   build-windows:
   
@@ -75,4 +75,4 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: windows_built_solver
-          path: windows-build/*
+          path: windows-build/mechanics.exe
