@@ -68,9 +68,9 @@ jobs:
         id: runcmake
         with:
           cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
-            configurePreset: default
-            buildPreset: default
-            useVcpkgToolchainFile: true
+          configurePreset: default
+          buildPreset: default
+          useVcpkgToolchainFile: true
 
       - name: Upload built artifact
         uses: actions/upload-artifact@v3
