@@ -17,9 +17,6 @@ jobs:
       with:
         submodules: true
 
-    - name: Directory setup
-      run: mkdir ubuntu-build
-
     - uses: lukka/get-cmake@latest
 
     - name: Restore artifacts, or setup vcpkg for building artifacts
@@ -35,10 +32,10 @@ jobs:
         cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
 
     - name: Directory check
-      run: ls -al && ls -al ubuntu-build
+      run: ls -al
 
     - name: Upload built artifact
       uses: actions/upload-artifact@v3
       with:
         name: ubuntu_built_solver
-        path: ./ubuntu-build/*
+        path: build/*
