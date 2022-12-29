@@ -32,7 +32,7 @@
     },
     {
       "name": "ubuntu-build",
-      "configurePreset": "default",
+      "configurePreset": "ubuntu",
       "displayName": "Build",
       "description": "Build"
     }
