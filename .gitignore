@@ -1,2 +1,9 @@
 cmake-*/
 .idea/
+build/
+output/
+.git/
+
+execution.params.txt
+support.bat
+mechanics.exe

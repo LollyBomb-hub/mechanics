@@ -30,9 +30,8 @@ jobs:
       id: runcmake
       with:
         cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
-        configurePreset: ubuntu
-        buildPreset: ubuntu-build
-        useVcpkgToolchainFile: true
+        configurePreset: 'ubuntu'
+        buildPreset: 'ubuntu-build'
 
     - name: Upload built artifact
       uses: actions/upload-artifact@v3
@@ -65,9 +64,8 @@ jobs:
       id: runcmake
       with:
         cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
-        configurePreset: windows
-        buildPreset: windows-build
-        useVcpkgToolchainFile: true
+        configurePreset: 'windows'
+        buildPreset: 'windows-build'
 
     - name: Upload built artifact
       uses: actions/upload-artifact@v3
