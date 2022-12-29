@@ -30,6 +30,9 @@ jobs:
         id: runcmake
         with:
           cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
+          configurePreset: default
+          buildPreset: default
+          useVcpkgToolchainFile: true
 
       - name: Directory check
         run: ls -al && ls -al vcpkg && ls -al .. && ls -al ../b
