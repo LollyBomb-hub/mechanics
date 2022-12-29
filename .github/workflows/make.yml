@@ -32,7 +32,7 @@ jobs:
           cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
 
       - name: Directory check
-        run: ls -al && ls -al vcpkg
+        run: ls -al && ls -al vcpkg && ls -al ..
 
       - name: Upload built artifact
         uses: actions/upload-artifact@v3
