@@ -72,9 +72,6 @@ jobs:
       with:
         cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
 
-    - name: Directory check
-      run: ls -al **/*
-
     - name: Upload built artifact
       uses: actions/upload-artifact@v3
       with:
