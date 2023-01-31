@@ -40,7 +40,7 @@ jobs:
           name: ubuntu_built_solver
           path: ubuntu-build/mechanics
 
-  build-ubuntu:
+  build-macos:
 
     runs-on: macos-latest
     env:
