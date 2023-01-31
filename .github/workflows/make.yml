@@ -32,8 +32,6 @@ jobs:
         id: runcmake
         with:
           cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
-          configurePreset: ${{ runner.os }}
-          buildPreset: ${{ runner.os }}
 
       - name: Upload built artifact
         uses: actions/upload-artifact@v3
