@@ -5,14 +5,13 @@ on:
     branches: [ "releases" ]
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        os: [ windows-latest, macos-latest, ubuntu-latest ]
+  build-ubuntu:
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     env:
       CMAKE_BUILD_TYPE: 'Release'
+      CONFIGURE_PRESET_NAME: 'ubuntu'
+      BUILD_PRESET_NAME: 'ubuntu-build'
 
     steps:
       - uses: actions/checkout@v3
@@ -32,9 +31,81 @@ jobs:
         id: runcmake
         with:
           cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
+          configurePreset: default
+          buildPreset: default
 
       - name: Upload built artifact
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ runner.os }} build
-          path: ${{ runner.os }}-build/mechanics*
+          name: ubuntu_built_solver
+          path: ubuntu-build/mechanics
+
+build-ubuntu:
+
+  runs-on: macos-latest
+  env:
+    CMAKE_BUILD_TYPE: 'Release'
+    CONFIGURE_PRESET_NAME: 'macos'
+    BUILD_PRESET_NAME: 'macos-build'
+
+  steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: true
+
+    - uses: lukka/get-cmake@latest
+
+    - name: Restore artifacts, or setup vcpkg for building artifacts
+      uses: lukka/run-vcpkg@v10
+      id: runvcpkg
+      with:
+        runVcpkgInstall: true
+
+    - name: Run CMake+vcpkg+Ninja
+      uses: lukka/run-cmake@v10
+      id: runcmake
+      with:
+        cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
+        configurePreset: default
+        buildPreset: default
+
+    - name: Upload built artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: macos_built_solver
+        path: macos-build/mechanics*
+
+  build-windows:
+
+    runs-on: windows-latest
+    env:
+      CMAKE_BUILD_TYPE: 'Release'
+      CONFIGURE_PRESET_NAME: 'windows'
+      BUILD_PRESET_NAME: 'windows-build'
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - uses: lukka/get-cmake@latest
+
+      - name: Restore artifacts, or setup vcpkg for building artifacts
+        uses: lukka/run-vcpkg@v10
+        id: runvcpkg
+        with:
+          runVcpkgInstall: true
+
+      - name: Run CMake+vcpkg+Ninja
+        uses: lukka/run-cmake@v10
+        id: runcmake
+        with:
+          cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
+          configurePreset: default
+          buildPreset: default
+
+      - name: Upload built artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: windows_built_solver
+          path: windows-build/mechanics.exe
