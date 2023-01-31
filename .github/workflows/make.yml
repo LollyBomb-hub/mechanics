@@ -8,7 +8,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ windows-latest, ubuntu-latest, macos-latest ]
+        os: [ windows-latest ]
 
     runs-on: ${{ matrix.os }}
     env:
@@ -36,7 +36,6 @@ jobs:
           cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
           configurePreset: default
           buildPreset: default
-          useVcpkgToolchainFile: true
 
       - name: Upload built artifact
         uses: actions/upload-artifact@v3
