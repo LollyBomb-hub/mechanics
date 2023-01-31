@@ -40,40 +40,40 @@ jobs:
           name: ubuntu_built_solver
           path: ubuntu-build/mechanics
 
-build-ubuntu:
+  build-ubuntu:
 
-  runs-on: macos-latest
-  env:
-    CMAKE_BUILD_TYPE: 'Release'
-    CONFIGURE_PRESET_NAME: 'macos'
-    BUILD_PRESET_NAME: 'macos-build'
+    runs-on: macos-latest
+    env:
+      CMAKE_BUILD_TYPE: 'Release'
+      CONFIGURE_PRESET_NAME: 'macos'
+      BUILD_PRESET_NAME: 'macos-build'
 
-  steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: true
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
 
-    - uses: lukka/get-cmake@latest
+      - uses: lukka/get-cmake@latest
 
-    - name: Restore artifacts, or setup vcpkg for building artifacts
-      uses: lukka/run-vcpkg@v10
-      id: runvcpkg
-      with:
-        runVcpkgInstall: true
+      - name: Restore artifacts, or setup vcpkg for building artifacts
+        uses: lukka/run-vcpkg@v10
+        id: runvcpkg
+        with:
+          runVcpkgInstall: true
 
-    - name: Run CMake+vcpkg+Ninja
-      uses: lukka/run-cmake@v10
-      id: runcmake
-      with:
-        cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
-        configurePreset: default
-        buildPreset: default
+      - name: Run CMake+vcpkg+Ninja
+        uses: lukka/run-cmake@v10
+        id: runcmake
+        with:
+          cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
+          configurePreset: default
+          buildPreset: default
 
-    - name: Upload built artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: macos_built_solver
-        path: macos-build/mechanics*
+      - name: Upload built artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: macos_built_solver
+          path: macos-build/mechanics*
 
   build-windows:
 
