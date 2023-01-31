@@ -1,50 +1,31 @@
-name: _Makefile CI
+name: Build-All-Platforms
 
 on:
   push:
     branches: [ "releases" ]
 
 jobs:
-  build-ubuntu:
+  build:
+    strategy:
+      matrix:
+        os: [ windows-latest, ubuntu-latest, macos-latest ]
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Directory setup
-      run: mkdir ubuntu-build
+      - name: Directory setup
+        run: mkdir ${{ matrix.os }}-build
 
-    - name: Configuration cmake for release build
-      run: cmake -B ${{github.workspace}}/ubuntu-build -DCMAKE_BUILD_TYPE=Release
+      - name: Configuration cmake for release build
+        run: cmake -B ${{github.workspace}}/${{ matrix.os }}-build -DCMAKE_BUILD_TYPE=Release
 
-    - name: Release build
-      run: cmake --build ${{github.workspace}}/ubuntu-build --config Release
+      - name: Release build
+        run: cmake --build ${{github.workspace}}/${{ matrix.os }}-build --config Release
 
-    - name: Upload built artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: ubuntu_built_solver
-        path: ./ubuntu-build/*
-
-  build-windows:
-  
-    runs-on: windows-latest
-    
-    steps:
-    - uses: actions/checkout@v3
-
-    - name: Directory setup
-      run: mkdir windows-build
-
-    - name: Configuration cmake for release build
-      run: cmake -B ${{github.workspace}}/windows-build -DCMAKE_BUILD_TYPE=Release
-
-    - name: Release build
-      run: cmake --build ${{github.workspace}}/windows-build --config Release
-
-    - name: Upload built artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: windows_built_solver
-        path: ./windows-build/*
+      - name: Upload built artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ runner.os }} build
+          path: ./${{ matrix.os }}-build/*

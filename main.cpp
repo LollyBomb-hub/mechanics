@@ -1,3 +1,10 @@
+#define EIGEN_VECTORIZE_SSE3
+#define EIGEN_VECTORIZE_SSSE3
+#define EIGEN_VECTORIZE_SSE4_1
+#define EIGEN_VECTORIZE_SSE4_2
+#define EIGEN_VECTORIZE_FMA
+
+
 #include <iostream>
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
@@ -10,15 +17,14 @@
 #define IS_FLOAT
 
 #ifdef IS_FLOAT
-#define MATRIX_TYPE Eigen::MatrixXf
 #define VECTOR_TYPE Eigen::VectorXf
 typedef float TYPE;
 #else
-#define MATRIX_TYPE Eigen::MatrixXd
 #define VECTOR_TYPE Eigen::VectorXd
 typedef long double TYPE;
 #endif
 
+typedef Eigen::SparseMatrix<TYPE> MATRIX_TYPE;
 
 #define MCD 1
 #define NEWMARK 2
@@ -49,7 +55,7 @@ void removeColumn(MATRIX_TYPE& matrix, unsigned int colToRemove)
 
 // https://vk.com/doc131581930_645459975?hash=grFJfOlaOMeM59eYHGvsUlgjeqmQXIOW7vmJMt7K6ao&dl=gQSajjmLbAK969UEMJv8hx9zAV1QPXXu7KgxsEnH0dg
 TYPE get_dt(const MATRIX_TYPE &masses, const MATRIX_TYPE &stiffness) {
-    const TYPE eigen_max = (masses.inverse() * stiffness).eigenvalues().real().maxCoeff();
+    const TYPE eigen_max = (masses.toDense().inverse() * stiffness).eigenvalues().real().maxCoeff();
     const TYPE omega_max = sqrt(eigen_max);
     const TYPE min_period = TYPE(2) * std::numbers::pi_v<TYPE> / omega_max;
     return min_period / TYPE(10);
@@ -68,9 +74,8 @@ void mechanics_mcd(const MATRIX_TYPE &masses, const MATRIX_TYPE &demp, const MAT
     const MATRIX_TYPE Q_1 = (M_div_sqr_dt + D_div_double_dt);
     const MATRIX_TYPE Q_2 = (2 * M_div_sqr_dt - stiffness);
     const MATRIX_TYPE Q_3 = (M_div_sqr_dt - D_div_double_dt);
-    const Eigen::SparseMatrix<TYPE> sparse_matrix = Q_1.sparseView();
     for (size_t idx = 0; idx < N; idx++) {
-    	Eigen::SimplicialLDLT<Eigen::SparseMatrix<TYPE>> solver(sparse_matrix);
+    	Eigen::SimplicialLDLT<Eigen::SparseMatrix<TYPE>> solver(Q_1);
 		VECTOR_TYPE V_next = solver.solve(F(idx) + Q_2 * V_1 - Q_3 * V_0);
         if (boundaries != nullptr) {
             boundaries(V_next);
@@ -108,7 +113,6 @@ void mechanics_newmark(
 	const auto a4 = delta / alpha - 1;
 	const auto a5 = (dt / 2) * (delta / alpha - 2);
 	const auto matrix = a0 * masses + a1 * demp + stiffness;
-	const Eigen::SparseMatrix<TYPE> sparse_matrix = matrix.sparseView();
 	const auto callback_specified = (callback != nullptr);
 	std::cout << "Starting Newmark method with parameters:\n"
 				<< "\tdt	= " << dt << '\n'
@@ -127,7 +131,7 @@ void mechanics_newmark(
 		const auto masses_multiplied_argument = masses * (a0 * displacement + a2 * speed + a3 * acceleration);
 		const auto demp_multiplied_argument = demp * (a1 * displacement + a4 * speed + a5 * acceleration);
 		const auto right_part = F_n_next + masses_multiplied_argument + demp_multiplied_argument;
-		Eigen::SimplicialLDLT<Eigen::SparseMatrix<TYPE>> solver(sparse_matrix);
+		Eigen::SimplicialLDLT<Eigen::SparseMatrix<TYPE>> solver(matrix);
 		const auto displacement_next = solver.solve(right_part);
 		const auto speed_next = a1 * (displacement_next - displacement) - a4 * (speed) - a5 * acceleration;
 		const auto acceleration_next = a0 * (displacement_next - displacement) - a2 * speed - a3 * acceleration;
@@ -142,46 +146,12 @@ void mechanics_newmark(
 
 
 void ensemble(MATRIX_TYPE& appendable_matrix, MATRIX_TYPE& appended_matrix, const size_t start_from_row, const size_t start_from_col) {
-	size_t i, j;
-	const auto appendable_matrix_rows = appendable_matrix.rows();
-	const auto appendable_matrix_cols = appendable_matrix.cols();
-	const auto appended_matrix_rows = appended_matrix.rows();
-	const auto appended_matrix_cols = appended_matrix.cols();
-	
-	const auto merged_region_row_count = appendable_matrix_rows - start_from_row;
-	const auto merged_region_col_count = appendable_matrix_cols - start_from_col;
-	appendable_matrix.block(start_from_row, start_from_col, merged_region_row_count, merged_region_col_count) += 
-				appended_matrix.block(0, 0, merged_region_row_count, merged_region_col_count);
-	const auto rest_rows_count = appended_matrix_rows - merged_region_row_count;
-	const auto rest_cols_count = appended_matrix_cols - merged_region_col_count;
-	const auto rows_before_appended_region = appendable_matrix_rows - merged_region_row_count;
-	const auto cols_before_appended_region = appendable_matrix_cols - merged_region_col_count;
-	const auto new_rows_count = appendable_matrix_rows + rest_rows_count;
-	const auto new_cols_count = appendable_matrix_cols + rest_cols_count;
-	appendable_matrix.conservativeResize(new_rows_count, new_cols_count);
-	VECTOR_TYPE zeros(new_cols_count);
-	for (i = 0; i < rest_rows_count; i++) {
-		for (j = 0; j < new_cols_count; j++) {
-			if (j >= cols_before_appended_region) {
-				zeros(j) = appended_matrix(i + merged_region_row_count, j - cols_before_appended_region);
-			} else {
-				zeros(j) = 0;
-			}
-		}
-		appendable_matrix.row(i + appendable_matrix_rows) = zeros;
-	}
-	zeros = VECTOR_TYPE(appendable_matrix_rows);
-	for (i = appendable_matrix_cols; i < new_cols_count; i++) {
-		const auto appended_col_index = i - appendable_matrix_cols + merged_region_col_count;
-		for (j = 0; j < appendable_matrix_rows; j++) {
-			if (j >= start_from_row) {
-				zeros(j) = appended_matrix(j - start_from_row, appended_col_index);
-			} else {
-				zeros(j) = 0;
-			}
-		}
-		appendable_matrix.block(0, i, appendable_matrix_rows, 1) = zeros;
-	}
+    size_t i, j;
+    for (i = 0; i < appended_matrix.rows(); i++) {
+        for (j = 0; j < appended_matrix.cols(); j++) {
+            appendable_matrix.coeffRef(i + start_from_row, j + start_from_col) = appended_matrix.coeffRef(i, j);
+        }
+    }
 }
 
 
@@ -222,8 +192,6 @@ MATRIX_TYPE masses_matrix(const TYPE A, const TYPE J, const TYPE L, const TYPE r
         }
         masses.coeffRef(i, i) = val;
         for (unsigned short j = 0; j < i; j++) {
-            masses.coeffRef(i, j) = 0;
-            masses.coeffRef(j, i) = 0;
             if (i == 4 && j == 2) {
                 masses.coeffRef(i, j) = -twenty_two_l;
                 masses.coeffRef(j, i) = -twenty_two_l;
@@ -343,8 +311,6 @@ MATRIX_TYPE stiffness_matrix(const TYPE E, const TYPE A, const TYPE L, const TYP
         }
         stiffness.coeffRef(i, i) = val;
         for (unsigned short j = 0; j < i; j++) {
-            stiffness.coeffRef(i, j) = 0;
-            stiffness.coeffRef(j, i) = 0;
             if (i == 4 && j == 2) {
                 stiffness.coeffRef(i, j) = -c6;
                 stiffness.coeffRef(j, i) = -c6;
