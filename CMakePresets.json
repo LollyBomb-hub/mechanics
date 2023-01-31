@@ -7,46 +7,46 @@
   },
   "configurePresets": [
     {
-      "name": "windows-latest",
+      "name": "Windows",
       "displayName": "Ninja Configure Settings",
       "description": "Sets build and install directories",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/windows-latest-build",
+      "binaryDir": "${sourceDir}/Windows-build",
       "toolchainFile": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake"
     },
     {
-      "name": "ubuntu-latest",
+      "name": "Linux",
       "displayName": "Ninja Configure Settings",
       "description": "Sets build and install directories",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/ubuntu-latest-build",
+      "binaryDir": "${sourceDir}/Linux-build",
       "toolchainFile": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake"
     },
     {
-      "name": "macos-latest",
+      "name": "macOS",
       "displayName": "Ninja Configure Settings",
       "description": "Sets build and install directories",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/macos-latest-build",
+      "binaryDir": "${sourceDir}/macOS-build",
       "toolchainFile": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake"
     }
   ],
   "buildPresets": [
     {
-      "name": "windows-latest",
-      "configurePreset": "windows-latest",
+      "name": "Windows",
+      "configurePreset": "Windows",
       "displayName": "Build",
       "description": "Build"
     },
     {
-      "name": "ubuntu-latest",
-      "configurePreset": "ubuntu-latest",
+      "name": "Ubuntu",
+      "configurePreset": "Ubuntu",
       "displayName": "Build",
       "description": "Build"
     },
     {
-      "name": "macos-latest",
-      "configurePreset": "macos-latest",
+      "name": "macOS",
+      "configurePreset": "macOS",
       "displayName": "Build",
       "description": "Build"
     }
