@@ -26,6 +26,19 @@ typedef long double TYPE;
 typedef Eigen::SparseMatrix<double> MATRIX_TYPE;
 #endif
 
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+#else
+#include <mmintrin.h>
+#include <mm3dnow.h>
+#include <emmintrin.h>
+#include <xmmintrin.h>
+#include <pmmintrin.h>
+#include <tmmintrin.h>
+#include <smmintrin.h>
+#include <nmmintrin.h>
+#include <wmmintrin.h>
+#endif
+
 #define MCD 1
 #define NEWMARK 2
 
