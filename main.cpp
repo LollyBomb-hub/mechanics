@@ -30,29 +30,6 @@ typedef Eigen::SparseMatrix<double> MATRIX_TYPE;
 #define NEWMARK 2
 
 
-void removeRow(MATRIX_TYPE& matrix, unsigned int rowToRemove)
-{
-    unsigned int numRows = matrix.rows()-1;
-    unsigned int numCols = matrix.cols();
-
-    if( rowToRemove < numRows )
-        matrix.toDense().block(rowToRemove,0,numRows-rowToRemove,numCols) = matrix.toDense().bottomRows(numRows-rowToRemove);
-
-    matrix.conservativeResize(numRows,numCols);
-}
-
-void removeColumn(MATRIX_TYPE& matrix, unsigned int colToRemove)
-{
-    unsigned int numRows = matrix.rows();
-    unsigned int numCols = matrix.cols()-1;
-
-    if( colToRemove < numCols )
-        matrix.toDense().block(0,colToRemove,numRows,numCols-colToRemove) = matrix.toDense().rightCols(numCols-colToRemove);
-
-    matrix.conservativeResize(numRows,numCols);
-}
-
-
 // https://vk.com/doc131581930_645459975?hash=grFJfOlaOMeM59eYHGvsUlgjeqmQXIOW7vmJMt7K6ao&dl=gQSajjmLbAK969UEMJv8hx9zAV1QPXXu7KgxsEnH0dg
 TYPE get_dt(const MATRIX_TYPE &masses, const MATRIX_TYPE &stiffness) {
     const TYPE eigen_max = (masses.toDense().inverse() * stiffness).eigenvalues().real().maxCoeff();
