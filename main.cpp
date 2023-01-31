@@ -19,12 +19,12 @@
 #ifdef IS_FLOAT
 #define VECTOR_TYPE Eigen::VectorXf
 typedef float TYPE;
+typedef Eigen::SparseMatrix<float> MATRIX_TYPE;
 #else
 #define VECTOR_TYPE Eigen::VectorXd
 typedef long double TYPE;
+typedef Eigen::SparseMatrix<double> MATRIX_TYPE;
 #endif
-
-typedef Eigen::SparseMatrix<TYPE> MATRIX_TYPE;
 
 #define MCD 1
 #define NEWMARK 2
@@ -36,7 +36,7 @@ void removeRow(MATRIX_TYPE& matrix, unsigned int rowToRemove)
     unsigned int numCols = matrix.cols();
 
     if( rowToRemove < numRows )
-        matrix.block(rowToRemove,0,numRows-rowToRemove,numCols) = matrix.bottomRows(numRows-rowToRemove);
+        matrix.toDense().block(rowToRemove,0,numRows-rowToRemove,numCols) = matrix.toDense().bottomRows(numRows-rowToRemove);
 
     matrix.conservativeResize(numRows,numCols);
 }
@@ -47,7 +47,7 @@ void removeColumn(MATRIX_TYPE& matrix, unsigned int colToRemove)
     unsigned int numCols = matrix.cols()-1;
 
     if( colToRemove < numCols )
-        matrix.block(0,colToRemove,numRows,numCols-colToRemove) = matrix.rightCols(numCols-colToRemove);
+        matrix.toDense().block(0,colToRemove,numRows,numCols-colToRemove) = matrix.toDense().rightCols(numCols-colToRemove);
 
     matrix.conservativeResize(numRows,numCols);
 }
@@ -142,6 +142,7 @@ void mechanics_newmark(
 
 void ensemble(MATRIX_TYPE& appendable_matrix, MATRIX_TYPE& appended_matrix, const size_t start_from_row, const size_t start_from_col) {
     size_t i, j;
+    appendable_matrix.conservativeResize(appended_matrix.rows() - start_from_row + appendable_matrix.rows(), appended_matrix.cols() - start_from_col + appendable_matrix.cols());
     for (i = 0; i < appended_matrix.rows(); i++) {
         for (j = 0; j < appended_matrix.cols(); j++) {
             appendable_matrix.coeffRef(i + start_from_row, j + start_from_col) = appended_matrix.coeffRef(i, j);
@@ -492,10 +493,15 @@ int main(int argc, char **argv) {
         
         const auto f_data_file_path_string = std::string(root.get("f_dat_file_path", "").as<std::string>());
         const auto f_data_file_path = std::filesystem::path(f_data_file_path_string);
+
+        if (!std::filesystem::exists(f_data_file_path)) {
+            std::cout << "Configuration file doesn't exist!\n";
+            exit(3);
+        }
         
-        auto super_elements = root["elements"];
+        auto super_elements = root.get("elements", Json::Value(-1));
         
-        if (super_elements == NULL) {
+        if (super_elements.isInt() && super_elements.asInt() == -1) {
         	std::cout << "Super elements not specified!\n";
         	exit(4);
 		}
@@ -520,16 +526,14 @@ int main(int argc, char **argv) {
 			std::cout << "Masses was null!\n";
 			exit(3);
 		}
-        
-        for (int i = 0; i < 6; i++) {
-        	removeRow(*masses_matrix_res, 0);
-        	removeColumn(*masses_matrix_res, 0);
-        	removeRow(*stiffness_matrix_res, 0);
-        	removeColumn(*stiffness_matrix_res, 0);
-        	removeRow(*demp_matrix_res, 0);
-        	removeColumn(*demp_matrix_res, 0);
-		}
-		
+
+        const auto nrows = (*stiffness_matrix_res).rows() - 6;
+        const auto ncols = (*stiffness_matrix_res).cols() - 6;
+
+        *masses_matrix_res = (*masses_matrix_res).bottomRightCorner(nrows, ncols);
+        *stiffness_matrix_res = (*stiffness_matrix_res).bottomRightCorner(nrows, ncols);
+        *demp_matrix_res = (*demp_matrix_res).bottomRightCorner(nrows, ncols);
+
 		const size_t initial_conditions_vectors_size = masses_matrix_res->rows();
         
         MATRIX_TYPE fs(N, initial_conditions_vectors_size);

@@ -4,7 +4,7 @@
   "N": 1,
   "newmark_alpha": 0.3025,
   "newmark_delta": 0.6,
-  "f_dat_file_path": "C:\\Users\\Sergio\\Desktop\\mechanics-master\\fs.dat",
+  "f_dat_file_path": "C:\\Users\\a.pesterev\\CLionProjects\\mechanics\\fs.dat",
   "elements": [
     {
       "alpha": 0,
@@ -27,7 +27,7 @@
       "L": 5,
       "I_y": 0.1,
       "I_z": 0.1,
-      "E": 1.75e7,
+      "E": 5.75e7,
       "G": 1.05e11
     }
   ]
