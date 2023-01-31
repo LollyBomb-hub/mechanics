@@ -1,8 +1,13 @@
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
 #define EIGEN_VECTORIZE_SSE3
 #define EIGEN_VECTORIZE_SSSE3
 #define EIGEN_VECTORIZE_SSE4_1
 #define EIGEN_VECTORIZE_SSE4_2
 #define EIGEN_VECTORIZE_FMA
+#else
+#define EIGEN_VECTORIZE_SSE3
+#define EIGEN_VECTORIZE_SSSE3
+#endif
 
 
 #include <iostream>
@@ -24,19 +29,6 @@ typedef Eigen::SparseMatrix<float> MATRIX_TYPE;
 #define VECTOR_TYPE Eigen::VectorXd
 typedef long double TYPE;
 typedef Eigen::SparseMatrix<double> MATRIX_TYPE;
-#endif
-
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
-#else
-#include <mmintrin.h>
-#include <mm3dnow.h>
-#include <emmintrin.h>
-#include <xmmintrin.h>
-#include <pmmintrin.h>
-#include <tmmintrin.h>
-#include <smmintrin.h>
-#include <nmmintrin.h>
-#include <wmmintrin.h>
 #endif
 
 #define MCD 1
