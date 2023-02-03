@@ -10,16 +10,16 @@ check_cxx_compiler_flag("-mfma" _mfma)
 set(_CXX_FLAGS)
 if(_march_native_works)
     message(STATUS "Using processor's vector instructions (-march=native compiler flag set)")
-    set(_CXX_FLAGS "-march=native ")
+    set(_CXX_FLAGS "-march=native")
 elseif(_xhost_works)
     message(STATUS "Using processor's vector instructions (-xHost compiler flag set)")
-    set(_CXX_FLAGS "-xHost ")
+    set(_CXX_FLAGS "-xHost")
 else()
     message(STATUS "No suitable compiler flag found for vectorization")
 endif()
 
 if (_mfma)
-    set(_CXX_FLAGS ${_CXX_FLAGS} -mfma)
+    set(_FMA_FLAG "-mfma")
 endif()
 
 set(CMAKE_CXX_STANDARD 20)
@@ -38,4 +38,5 @@ target_compile_options(
         mechanics
         PRIVATE
         ${_CXX_FLAGS}
+        ${_FMA_FLAG}
         )
