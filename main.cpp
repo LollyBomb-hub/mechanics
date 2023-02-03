@@ -1,10 +1,10 @@
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+//#if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
 #define EIGEN_VECTORIZE_SSE3
 #define EIGEN_VECTORIZE_SSSE3
 #define EIGEN_VECTORIZE_SSE4_1
 #define EIGEN_VECTORIZE_SSE4_2
 #define EIGEN_VECTORIZE_FMA
-#endif
+//#endif
 
 
 #include <iostream>
