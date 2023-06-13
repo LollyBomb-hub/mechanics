@@ -6,7 +6,6 @@
 #define EIGEN_VECTORIZE_FMA
 //#endif
 
-
 #include <iostream>
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
@@ -15,6 +14,7 @@
 #include <fstream>
 #include <json/json.h>
 #include <chrono>
+#include <fmt/core.h>
 
 #define IS_FLOAT
 
@@ -513,7 +513,7 @@ int main(int argc, char **argv) {
         *stiffness_matrix_res = (*stiffness_matrix_res).bottomRightCorner(nrows, ncols);
         *demp_matrix_res = (*demp_matrix_res).bottomRightCorner(nrows, ncols);
 
-		const size_t initial_conditions_vectors_size = masses_matrix_res->rows();
+		const auto initial_conditions_vectors_size = masses_matrix_res->rows();
         
         MATRIX_TYPE fs(N, initial_conditions_vectors_size);
         if (std::filesystem::exists(f_data_file_path) && std::filesystem::is_regular_file(f_data_file_path)) {
@@ -540,6 +540,15 @@ int main(int argc, char **argv) {
         std::ofstream output("./output/result.txt");
         
         output << "[M] = \n" << *masses_matrix_res << '\n' << "[C] = \n" << *demp_matrix_res << '\n' << "[K] = \n" << *stiffness_matrix_res << '\n';
+
+        output.close();
+
+#if _MSC_VER && !__INTEL_COMPILER
+        std::FILE *_output_file;
+        fopen_s(&_output_file, "./output/result.txt", "w");
+#else
+        std::FILE *_output_file = std::fopen("./output/result.txt", "w");
+#endif
         
         if (method_type == MCD) {
             VECTOR_TYPE v_0(initial_conditions_vectors_size);
@@ -548,10 +557,11 @@ int main(int argc, char **argv) {
                 v_0.coeffRef(i) = 0;
                 v_1.coeffRef(i) = 0;
             }
-            const auto mechanics_callback = [&output](const VECTOR_TYPE &v, const size_t idx) {
-                output << idx << '\n';
-                output << v;
-                output << '\n';
+            const auto mechanics_callback = [&_output_file](const VECTOR_TYPE &v, const size_t idx) {
+                fmt::print(_output_file,"{}\n", idx);
+                for (const auto& _i: v) {
+                    fmt::print(_output_file, "{}\n", _i);
+                }
             };
             if (dt > 0) {
                 mechanics_mcd(

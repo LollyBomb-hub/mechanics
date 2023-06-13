@@ -1,7 +1,7 @@
 {
   "method": 2,
   "dt": 0.01,
-  "N": 1,
+  "N": 50000,
   "newmark_alpha": 0.3025,
   "newmark_delta": 0.6,
   "f_dat_file_path": "C:\\Users\\a.pesterev\\CLionProjects\\mechanics\\fs.dat",

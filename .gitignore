@@ -3,7 +3,13 @@ cmake-*/
 build/
 output/
 .git/
+json/
+Eigen/
+fmt/
+lib/
 
+fmt.dll
 execution.params.txt
 support.bat
 mechanics.exe
+build_intel.bat

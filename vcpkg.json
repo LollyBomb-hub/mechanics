@@ -4,6 +4,7 @@
   "description": "Solver method of finite elements",
   "dependencies": [
     "eigen3",
-    "jsoncpp"
+    "jsoncpp",
+    "fmt"
   ]
 }
