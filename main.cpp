@@ -139,6 +139,7 @@ MATRIX_TYPE masses_matrix(const TYPE A, const TYPE J, const TYPE L, const TYPE r
     const auto minus_three_l_mul_l = -3 * L * L;
     const auto seventy_j_div_a = 70 * J / A;
     MATRIX_TYPE masses(12, 12);
+    masses.setZero();
     for (unsigned short i = 0; i < 12; i++) {
         TYPE val = -1;
         switch (i) {
@@ -254,6 +255,7 @@ MATRIX_TYPE stiffness_matrix(const TYPE E, const TYPE A, const TYPE L, const TYP
     const auto c10 = c4 / 2;
     const auto c11 = c5 / 2;
     MATRIX_TYPE stiffness(12, 12);
+    stiffness.setZero();
     for (unsigned short i = 0; i < 12; i++) {
         TYPE val = -1;
         switch (i) {
@@ -540,8 +542,6 @@ int main(int argc, char **argv) {
         std::ofstream output("./output/result.txt");
         
         output << "[M] = \n" << *masses_matrix_res << '\n' << "[C] = \n" << *demp_matrix_res << '\n' << "[K] = \n" << *stiffness_matrix_res << '\n';
-
-        output.close();
 
 #if _MSC_VER && !__INTEL_COMPILER
         std::FILE *_output_file;
